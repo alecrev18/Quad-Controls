@@ -247,7 +247,7 @@ void loop() {
     
   }
 
-    if(Setpoint[0]-Input[0]>0.5 || Setpoint[0]-Input[0]<-0.5)
+//    if(Setpoint[0]-Input[0]>0.5 || Setpoint[0]-Input[0]<-0.5)
     {
         PitchNN.updateSetpoint(Setpoint[0]);
         PitchNN.updatePosition(Input[0]);
@@ -256,7 +256,7 @@ void loop() {
         PitchNN.updateWeights();
     }
 
-        if(Setpoint[1]-Input[1]>0.5 || Setpoint[1]-Input[1]<-0.5)
+//        if(Setpoint[1]-Input[1]>0.5 || Setpoint[1]-Input[1]<-0.5)
     {
         RollNN.updateSetpoint(Setpoint[1]);
         RollNN.updatePosition(Input[1]);
@@ -265,7 +265,7 @@ void loop() {
         RollNN.updateWeights();
     }
 
-        if(Setpoint[2]-Input[2]>0.5 || Setpoint[2]-Input[2]<-0.5)
+//        if(Setpoint[2]-Input[2]>0.5 || Setpoint[2]-Input[2]<-0.5)
     {
         YawNN.updateSetpoint(Setpoint[2]);
         YawNN.updatePosition(Input[2]);
