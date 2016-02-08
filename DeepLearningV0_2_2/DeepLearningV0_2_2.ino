@@ -106,29 +106,44 @@ float Temporary_Matrix[3][3]={
     0,0,0  }
 };
 
-int value = 0; // set values you need to zero
 
-Servo firstESC; //Create as much as Servoobject you want. You can controll 2 or more Servos at the same time
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+Servo firstESC; //Create as many Servo objects you want. You can controll 2 or more Servos at the same time
+Servo secondESC;
+Servo thirdESC;
+Servo fourthESC;
 
-double Input, Output, Setpoint;
+int throttle = 0;
 
-PID PitchPID(&Input, &Output, &Setpoint,0.1,0.5,0, DIRECT);
+double Input[3]={0,0,0}; 
+double Output[4]={1060,1060,1060,1060};
+double Setpoint[3]={0,0,0};
+
+//PID PitchPID(&Input, &Output, &Setpoint,0.1,0.5,0, DIRECT);//DELETE
 
 String streamRead = "";
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 float buff[3]= {0,0,0};
 float accum;
 
 NNPID PitchNN(0.4);
+NNPID RollNN(0.4);
+NNPID YawNN(0.4);
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void setup() {
 
-  Input = ToDeg(pitch);
-  Setpoint = 8; //Will change according to remote input
-
-  firstESC.attach(2);    // attached to pin 11 I just do this with 1 Servo
+  Input[0] = ToDeg(pitch);
+  Input[1] = ToDeg(roll);
+  Input[2] = ToDeg(yaw);
+  
+  //Setpoint set to (0,0,0) right now
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  firstESC.attach(2);  // Check PIN NUMBER
+  secondESC.attach(4); //""
+  thirdESC.attach(6);  //""
+  fourthESC.attach(8); //""
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////  
   Serial.begin(115200); 
 
   pinMode (STATUS_LED,OUTPUT);  // Status LED
@@ -165,16 +180,20 @@ void setup() {
   delay(20);
   counter=0;
 
-  firstESC.writeMicroseconds(1100);//write output that the ESC likes Probably not nessecary
-  delay(2000);
+  firstESC.writeMicroseconds(1060);//write output that the ESC likes Probably not nessecary
+  secondESC.writeMicroseconds(1060);
+  thirdESC.writeMicroseconds(1060);
+  fourthESC.writeMicroseconds(1060);
+  
+  delay(1000);
 }
 
 void loop() {
 
-  if(Serial.available())//Uses Serial monitor to update setpoint if anything is there
-  {
-      Setpoint = Serial.parseFloat();
-  }
+//  if(Serial.available())//Uses Serial monitor to update setpoint if anything is there
+//  {
+//      Setpoint = Serial.parseFloat();
+//  }
   
   if((millis()-timer)>=30)  // Main loop runs at 50Hz
   {
@@ -199,45 +218,86 @@ void loop() {
     // ***
 
 
-    accum = 0;//This is where I average the sensor data 
-              //Probably a better way to do this
-    for( int i=2; i>1; i++)
-    {
-      buff[i] = buff[i-1];
-      accum = accum+buff[i];
-    }
-    buff[0]= (float) ToDeg(pitch);
-    accum = accum+buff[0];
-    
-    Input = accum/3;
+//    accum = 0;//This is where I average the sensor data 
+//              //Probably a better way to do this
+//    for( int i=2; i>1; i++)
+//    {
+//      buff[i] = buff[i-1];
+//      accum = accum+buff[i];
+//    }
+//    buff[0]= (float) ToDeg(pitch);
+//    accum = accum+buff[0];
+//    
+//    Input = accum/3;
 //    Input = (float) ToDeg(pitch);
 
-    if(Setpoint-Input>0.5 || Setpoint-Input<-0.5)
+//    if(Setpoint-Input>0.5 || Setpoint-Input<-0.5)
+//    {
+//        PitchNN.updateSetpoint(Setpoint);
+//        PitchNN.updatePosition(Input);
+//        PitchNN.calculateOutputOfNeurons();
+//        PitchNN.calculateInputOfNeurons();
+//        PitchNN.updateWeights();
+//    }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    Input[0] = ToDeg(pitch);
+    Input[1] = ToDeg(roll);
+    Input[2] = ToDeg(yaw);
+    
+  }
+
+    if(Setpoint[0]-Input[0]>0.5 || Setpoint[0]-Input[0]<-0.5)
     {
-        PitchNN.updateSetpoint(Setpoint);
-        PitchNN.updatePosition(Input);
+        PitchNN.updateSetpoint(Setpoint[0]);
+        PitchNN.updatePosition(Input[0]);
         PitchNN.calculateOutputOfNeurons();
         PitchNN.calculateInputOfNeurons();
         PitchNN.updateWeights();
     }
-  }
 
-  Output = PitchNN.Output()*30+1220;//gain is set to 30 
-                                    //Throttle set to 1220
+        if(Setpoint[1]-Input[1]>0.5 || Setpoint[1]-Input[1]<-0.5)
+    {
+        RollNN.updateSetpoint(Setpoint[1]);
+        RollNN.updatePosition(Input[1]);
+        RollNN.calculateOutputOfNeurons();
+        RollNN.calculateInputOfNeurons();
+        RollNN.updateWeights();
+    }
+
+        if(Setpoint[2]-Input[2]>0.5 || Setpoint[2]-Input[2]<-0.5)
+    {
+        YawNN.updateSetpoint(Setpoint[2]);
+        YawNN.updatePosition(Input[2]);
+        YawNN.calculateOutputOfNeurons();
+        YawNN.calculateInputOfNeurons();
+        YawNN.updateWeights();
+    }
+
+//  Source: http://www.benripley.com/development/quadcopter-source-code-from-scratch/
+
+  Output[0] = throttle+PitchNN.Output();//+YawNN.Output();
+  Output[1] = throttle+RollNN.Output();//-YawNN.Output();
+  Output[2] = throttle-PitchNN.Output();//+YawNN.Output();
+  Output[3] = throttle-RollNN.Output();//-YawNN.Output();
   
-    firstESC.writeMicroseconds(Output);
+  firstESC.writeMicroseconds(Output[0]);
+  secondESC.writeMicroseconds(Output[1]);
+  thirdESC.writeMicroseconds(Output[2]);
+  fourthESC.writeMicroseconds(Output[3]);
+  
 //    Serial.print(" Pitch, ");
 //    Serial.print(ToDeg(pitch));
-    Serial.print(" Input ");
-    Serial.print(Input);
-    Serial.print(" Setpoint ");
-    Serial.print(Setpoint);
-    Serial.print(" Output ");
-    Serial.print(Output);
-    Serial.println();
-//  Printx();
-//  Printu();
-    PitchNN.Printw();    
+//    Serial.print(" Input ");
+//    Serial.print(Input);
+//    Serial.print(" Setpoint ");
+//    Serial.print(Setpoint);
+//    Serial.print(" Output ");
+//    Serial.print(Output);
+//    Serial.println();
+//    PitchNN.Printx();
+//    PitchNN.Printu();
+//    PitchNN.Printw();    
 }
 
 
