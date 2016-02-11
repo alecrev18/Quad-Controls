@@ -116,19 +116,37 @@ Servo fourthESC;
 int throttle = 0;
 
 double Input[3]={0,0,0}; 
-double Output[4]={1060,1060,1060,1060};
+double Output[3]={0,0,0};
 double Setpoint[3]={0,0,0};
 
-//PID PitchPID(&Input, &Output, &Setpoint,0.1,0.5,0, DIRECT);//DELETE
+PID PitchPID(&Input[0], &Output[0], &Setpoint[0],1.55,0.009,0, DIRECT);//DELETE
+PID RollPID(&Input[1], &Output[1], &Setpoint[1],1.55,0.009,0, DIRECT);
+PID YawPID(&Input[2], &Output[2], &Setpoint[2],5,0.5,0, DIRECT);
+
+int Motor1 = 0;
+int Motor2 = 0;
+int Motor3 = 0;
+int Motor4 = 0;
 
 String streamRead = "";
 
 float buff[3]= {0,0,0};
 float accum;
 
-NNPID PitchNN(0.4);
-NNPID RollNN(0.4);
-NNPID YawNN(0.4);
+int Chan1 = 2;      //Pitch from Remote
+int Chan1IN = 1460;
+int Chan2 = 3;      //Roll
+int Chan2IN = 1460;
+int Chan3 = 4;      //Throttle
+int Chan3IN = 0;
+int Chan4 = 5;      //Yaw
+int Chan4IN = 1460;
+
+int gain=1;
+
+//NNPID PitchNN(0.4);
+//NNPID RollNN(0.4);
+//NNPID YawNN(0.4);
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void setup() {
@@ -139,10 +157,23 @@ void setup() {
   
   //Setpoint set to (0,0,0) right now
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  firstESC.attach(2);  // Check PIN NUMBER
-  secondESC.attach(4); //""
-  thirdESC.attach(6);  //""
-  fourthESC.attach(8); //""
+  firstESC.attach(8);  // Check PIN NUMBER
+  secondESC.attach(9); //""
+  thirdESC.attach(10);  //""
+  fourthESC.attach(11); //""
+
+  pinMode(Chan1, INPUT);
+  pinMode(Chan2, INPUT);
+  pinMode(Chan3, INPUT);
+  pinMode(Chan4, INPUT);
+
+  PitchPID.SetMode(AUTOMATIC);
+  RollPID.SetMode(AUTOMATIC);
+  YawPID.SetMode(AUTOMATIC);
+
+  PitchPID.SetOutputLimits(-255, 255);
+  RollPID.SetOutputLimits(-255, 255);
+  YawPID.SetOutputLimits(-255, 255);
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////  
   Serial.begin(115200); 
 
@@ -244,47 +275,92 @@ void loop() {
     Input[0] = ToDeg(pitch);
     Input[1] = ToDeg(roll);
     Input[2] = ToDeg(yaw);
+
+    Chan1IN = pulseIn(Chan1,HIGH);
+    Chan2IN = pulseIn(Chan2,HIGH);
+    Chan3IN = pulseIn(Chan3,HIGH);
+    Chan4IN = pulseIn(Chan4,HIGH);
+
+    Setpoint[0] = ((double)Chan2IN-1460)/10;
+    Setpoint[1] = ((double)Chan1IN-1460)/10;
+    Setpoint[2] = ((double)Chan4IN-1460)/10;
+
+    throttle = (int)Chan3IN;// - 1060;
+
+//    if(throttle <0)
+//    {
+//      throttle = 0;
+//    }
+//    throttle = 2*throttle;
+//
+//    for(int i=0;i<3;i++)
+//    {
+//      if(Setpoint[i]<-100 && Setpoint[i]>100)
+//      {
+//        Setpoint[i] =0; 
+//      }
+//    }
+
+    PitchPID.Compute();
+    RollPID.Compute();
+    YawPID.Compute();
     
   }
-
-//    if(Setpoint[0]-Input[0]>0.5 || Setpoint[0]-Input[0]<-0.5)
-    {
-        PitchNN.updateSetpoint(Setpoint[0]);
-        PitchNN.updatePosition(Input[0]);
-        PitchNN.calculateOutputOfNeurons();
-        PitchNN.calculateInputOfNeurons();
-        PitchNN.updateWeights();
-    }
-
-//        if(Setpoint[1]-Input[1]>0.5 || Setpoint[1]-Input[1]<-0.5)
-    {
-        RollNN.updateSetpoint(Setpoint[1]);
-        RollNN.updatePosition(Input[1]);
-        RollNN.calculateOutputOfNeurons();
-        RollNN.calculateInputOfNeurons();
-        RollNN.updateWeights();
-    }
-
-//        if(Setpoint[2]-Input[2]>0.5 || Setpoint[2]-Input[2]<-0.5)
-    {
-        YawNN.updateSetpoint(Setpoint[2]);
-        YawNN.updatePosition(Input[2]);
-        YawNN.calculateOutputOfNeurons();
-        YawNN.calculateInputOfNeurons();
-        YawNN.updateWeights();
-    }
+  
+////    if(Setpoint[0]-Input[0]>0.5 || Setpoint[0]-Input[0]<-0.5)
+//    {
+//        PitchNN.updateSetpoint(Setpoint[0]);
+//        PitchNN.updatePosition(Input[0]);
+//        PitchNN.calculateOutputOfNeurons();
+//        PitchNN.calculateInputOfNeurons();
+//        PitchNN.updateWeights();
+//    }
+//
+////        if(Setpoint[1]-Input[1]>0.5 || Setpoint[1]-Input[1]<-0.5)
+//    {
+//        RollNN.updateSetpoint(Setpoint[1]);
+//        RollNN.updatePosition(Input[1]);
+//        RollNN.calculateOutputOfNeurons();
+//        RollNN.calculateInputOfNeurons();
+//        RollNN.updateWeights();
+//    }
+//
+////        if(Setpoint[2]-Input[2]>0.5 || Setpoint[2]-Input[2]<-0.5)
+//    {
+//        YawNN.updateSetpoint(Setpoint[2]);
+//        YawNN.updatePosition(Input[2]);
+//        YawNN.calculateOutputOfNeurons();
+//        YawNN.calculateInputOfNeurons();
+//        YawNN.updateWeights();
+//    }
 
 //  Source: http://www.benripley.com/development/quadcopter-source-code-from-scratch/
 
-  Output[0] = throttle+PitchNN.Output();//+YawNN.Output();
-  Output[1] = throttle+RollNN.Output();//-YawNN.Output();
-  Output[2] = throttle-PitchNN.Output();//+YawNN.Output();
-  Output[3] = throttle-RollNN.Output();//-YawNN.Output();
+  gain =20;
   
-  firstESC.writeMicroseconds(Output[0]);
-  secondESC.writeMicroseconds(Output[1]);
-  thirdESC.writeMicroseconds(Output[2]);
-  fourthESC.writeMicroseconds(Output[3]);
+//  Output[0] = throttle-PitchNN.Output()*gain;//+YawNN.Output();
+//  Output[1] = throttle-RollNN.Output()*gain-PitchNN.Output()*gain;//-YawNN.Output();
+//  Output[2] = throttle+PitchNN.Output()*gain;//+YawNN.Output();
+//  Output[3] = throttle+RollNN.Output()*gain+PitchNN.Output()*gain;//-YawNN.Output();
+
+  Motor1 = throttle - Output[0]+Output[1];
+  Motor2 = throttle - Output[0]-Output[1];
+  Motor3 = throttle + Output[1]+Output[0];
+  Motor4 = throttle - Output[1]+Output[0];
+  
+  
+  firstESC.writeMicroseconds(Motor1);
+  secondESC.writeMicroseconds(Motor2);
+  thirdESC.writeMicroseconds(Motor3);
+  fourthESC.writeMicroseconds(Motor4);
+
+
+  Serial.print(ToDeg(pitch));
+  Serial.print(",");
+  Serial.print(Output[0]);
+  Serial.print(",");
+  Serial.print(Setpoint[0]);
+  Serial.println();
   
 //    Serial.print(" Pitch, ");
 //    Serial.print(ToDeg(pitch));
