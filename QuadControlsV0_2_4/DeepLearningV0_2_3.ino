@@ -3,9 +3,10 @@
 #include <PID_v1.h>
 #include <math.h>
 #include "NNPID.h"
-#include <Adafruit_Sensor.h>
-#include <Adafruit_LSM9DS0.h>
+#include "Adafruit_Sensor.h"
+#include "Adafruit_LSM9DS0.h"
 #include "Kalman.h"
+#include "PinChangeInt.h"
 
 //Sensor Stuff ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -32,6 +33,58 @@ double gyroXangle, gyroYangle;
 
 uint32_t timer;
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//Receiver variables
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#define CHANNEL1_IN_PIN 22
+#define CHANNEL2_IN_PIN 23
+#define CHANNEL3_IN_PIN 24
+#define CHANNEL4_IN_PIN 25
+#define CHANNEL5_IN_PIN 26
+#define CHANNEL6_IN_PIN 27
+
+// These bit flags are set in bUpdateFlagsShared to indicate which
+// channels have new signals
+#define CHANNEL1_FLAG 1
+#define CHANNEL2_FLAG 2
+#define CHANNEL3_FLAG 3
+#define CHANNEL4_FLAG 4
+#define CHANNEL5_FLAG 5
+#define CHANNEL6_FLAG 6
+
+// holds the update flags defined above
+volatile uint8_t bUpdateFlagsShared;
+
+// shared variables are updated by the ISR and read by loop.
+// In loop we immediatley take local copies so that the ISR can keep ownership of the
+// shared ones. To access these in loop
+// we first turn interrupts off with noInterrupts
+// we take a copy to use in loop and the turn interrupts back on
+// as quickly as possible, this ensures that we are always able to receive new signals
+volatile uint16_t unChannel1InShared;
+volatile uint16_t unChannel2InShared;
+volatile uint16_t unChannel3InShared;
+volatile uint16_t unChannel4InShared;
+volatile uint16_t unChannel5InShared;
+volatile uint16_t unChannel6InShared;
+
+// These are used to record the rising edge of a pulse in the calcInput functions
+// They do not need to be volatile as they are only used in the ISR. If we wanted
+// to refer to these in loop and the ISR then they would need to be declared volatile
+uint16_t unChannel1InStart;
+uint16_t unChannel2InStart;
+uint16_t unChannel3InStart;
+uint16_t unChannel4InStart;
+uint16_t unChannel5InStart;
+uint16_t unChannel6InStart;
+
+uint16_t unLastAuxIn = 0;
+uint32_t ulVariance = 0;
+uint32_t ulGetNextSampleMillis = 0;
+uint16_t unMaxDifference = 0;
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void displaySensorDetails(void)
 {
   sensor_t accel, mag, gyro, temp;
@@ -165,8 +218,23 @@ void setup() {
 //  secondESC.writeMicroseconds(1060);
 //  thirdESC.writeMicroseconds(1060);
 //  fourthESC.writeMicroseconds(1060);
-  
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//Receiver Setup
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  // using the PinChangeInt library, attach the interrupts
+  // used to read the channels
+//  PCintPort::attachInterrupt(CHANNEL1_IN_PIN, calcChannel1,CHANGE);
+//  PCintPort::attachInterrupt(CHANNEL2_IN_PIN, calcChannel2,CHANGE);
+//  PCintPort::attachInterrupt(CHANNEL3_IN_PIN, calcChannel3,CHANGE);
+//  PCintPort::attachInterrupt(CHANNEL4_IN_PIN, calcChannel4,CHANGE);
+//  PCintPort::attachInterrupt(CHANNEL5_IN_PIN, calcChannel5,CHANGE);
+//  PCintPort::attachInterrupt(CHANNEL6_IN_PIN, calcChannel6,CHANGE);
+
+  Serial.println(F("Done with Setup"));
   delay(500);
+  
 }
 
 void loop() {
@@ -263,6 +331,8 @@ void loop() {
     Serial.print(kalAngleX);
     Serial.print(" Pitch, ");
     Serial.print(kalAngleY);
+    Serial.print(" Channel1, ");
+    Serial.print(unChannel1InShared);
     Serial.println();
 //    PitchNN.Printx();
 //    PitchNN.Printu();
@@ -272,4 +342,81 @@ void loop() {
 }
 
 
+void calcChannel1()
+{noInterrupts();
+  if(PCintPort::pinState)
+  {
+    unChannel1InStart = TCNT1;
+  }
+  else
+  {
+    unChannel1InShared = (TCNT1 - unChannel1InStart)>>1;
+    bUpdateFlagsShared |= CHANNEL1_FLAG;
+  }
+  interrupts();
+}
 
+void calcChannel2()
+{
+  if(PCintPort::pinState)
+  {
+    unChannel2InStart = TCNT1;
+  }
+  else
+  {
+    unChannel2InShared = (TCNT1 - unChannel2InStart)>>1;
+    bUpdateFlagsShared |= CHANNEL2_FLAG;
+  }
+}
+
+void calcChannel3()
+{
+  if(PCintPort::pinState)
+  {
+    unChannel3InStart = TCNT1;
+  }
+  else
+  {
+    unChannel3InShared = (TCNT1 - unChannel3InStart)>>1;
+    bUpdateFlagsShared |= CHANNEL3_FLAG;
+  }
+}
+
+void calcChannel4()
+{
+  if(PCintPort::pinState)
+  {
+    unChannel4InStart = TCNT1;
+  }
+  else
+  {
+    unChannel4InShared = (TCNT1 - unChannel4InStart)>>1;
+    bUpdateFlagsShared |= CHANNEL4_FLAG;
+  }
+}
+
+void calcChannel5()
+{
+  if(PCintPort::pinState)
+  {
+    unChannel5InStart = TCNT1;
+  }
+  else
+  {
+    unChannel5InShared = (TCNT1 - unChannel5InStart)>>1;
+    bUpdateFlagsShared |= CHANNEL5_FLAG;
+  }
+}
+
+void calcChannel6()
+{
+  if(PCintPort::pinState)
+  {
+    unChannel6InStart = TCNT1;
+  }
+  else
+  {
+    unChannel6InShared = (TCNT1 - unChannel6InStart)>>1;
+    bUpdateFlagsShared |= CHANNEL6_FLAG;
+  }
+}
