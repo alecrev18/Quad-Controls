@@ -1,4 +1,4 @@
-/***************************************************************************
+/ ***************************************************************************
   This is a library for the LSM9DS0 Accelerometer and magnentometer/compass
 
   Designed specifically to work with the Adafruit LSM9DS0 Breakouts
