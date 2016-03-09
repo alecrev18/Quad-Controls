@@ -1,0 +1,14 @@
+int rcv_pin = #;      // connect the signal pin from the receiver to this pwm pin on the arduino
+
+void setup() 
+{
+  Serial.begin(9600);      //set serial print rate
+  pinMode(rcv_pin, INPUT);      //set pin to read input
+}
+
+int pwm_val;
+
+void loop()
+{
+  pwm_val=pulseIn(rcv_pin, INPUT);      //read the input at this pin
+}
