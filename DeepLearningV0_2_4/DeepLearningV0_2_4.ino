@@ -3,13 +3,13 @@
 #include "PID_v1.h"
 #include <math.h>
 #include "NNPID.h"
+#include "TinyGPS++.h"
 #include "Adafruit_Sensor.h"
 #include "Adafruit_LSM9DS0.h"
 #include "Kalman.h"
 #include "PinChangeInt.h"
-#include "TinyGPS++.h"
-//#include "TinyGPS.h"
 #include "MatrixMath.h"
+
 float pi = 3.1415926;
 
 //Sensor Stuff ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -39,12 +39,12 @@ uint32_t timer;
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //Receiver variables
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-#define channel1_pin 1
-#define channel2_pin 2
-#define channel3_pin 3
-#define channel4_pin 4
-#define channel5_pin 5
-#define channel6_pin 6
+#define channel1_pin 10
+#define channel2_pin 7
+#define channel3_pin 12
+#define channel4_pin 9
+//#define channel5_pin 5
+//#define channel6_pin 6
 
 int channel1 = 0;
 int channel2 = 0;
@@ -72,11 +72,11 @@ PID RollPID(&kalAngleY, &PIDout[1], &Setpoint[1],1.55,0.009,0, DIRECT);
 
 String streamRead = "";
 
-//NNPID PitchNN(0.4);
-//NNPID RollNN(0.4);
+NNPID PitchNN(kalAngleX, PIDout[0], 0.4);
+NNPID RollNN(kalAngleY, PIDout[1], 0.4);
 //NNPID YawNN(0.4);
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //Kalman Filter Initialization of Variables
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -139,13 +139,13 @@ void setup() {
   
   //Setpoint set to (0,0,0) right now
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  firstESC.attach(2);  // Check PIN NUMBER
-  secondESC.attach(4); //""
-  thirdESC.attach(6);  //""
-  fourthESC.attach(8); //""
+  firstESC.attach(5);  
+  secondESC.attach(4); 
+  thirdESC.attach(3);  
+  fourthESC.attach(2); 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////  
-  Serial.begin(9600);
-  
+  Serial.begin(9600); 
+
   if(!lsm.begin())
   {
     /* There was a problem detecting the LSM9DS0 ... check your connections */
@@ -161,7 +161,7 @@ void setup() {
   lsm.getEvent(&accel, &mag, &gyro, &temp); 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////  
   double roll = atan2(accel.acceleration.y,accel.acceleration.z)*Rad_To_Deg;
-  double pitch = atan(-accel.acceleration.x / sqrt(accel.acceleration.y * accel.acceleration.y + accel.acceleration.z * accel.acceleration.y))* Rad_To_Deg;
+  double pitch = atan(-accel.acceleration.x / sqrt(accel.acceleration.y * accel.acceleration.y + accel.acceleration.z * accel.acceleration.z))* Rad_To_Deg;
   
   kalmanX.setAngle(roll); // Set starting angle
   kalmanY.setAngle(pitch);
@@ -170,24 +170,12 @@ void setup() {
   
   timer = micros();
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////  
- 
-//  firstESC.writeMicroseconds(1060);//write output that the ESC likes Probably not nessecary
-//  secondESC.writeMicroseconds(1060);
-//  thirdESC.writeMicroseconds(1060);
-//  fourthESC.writeMicroseconds(1060);
-
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //Receiver Setup
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   Serial.println(F("Done with Setup"));
   delay(500);
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//Kalman Filter Setup
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  Serial1.begin(9600);
-  time = millis();
+  
 }
 
 void loop() {
@@ -216,7 +204,7 @@ void loop() {
     accZ = accel.acceleration.z;
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////  
   double roll = atan2(accY,accZ)*Rad_To_Deg;
-  double pitch = atan(-accX / sqrt(accY * accY + accZ * accZ))* Rad_To_Deg;
+  double pitch = atan(-accX / sqrt((accY * accY) + (accZ * accZ)))* Rad_To_Deg;
 
   if ((roll < -90 && kalAngleX > 90) || (roll > 90 && kalAngleX < -90)) {
     kalmanX.setAngle(roll);}
@@ -235,73 +223,6 @@ void loop() {
     gyroXangle = kalAngleX;
   if (gyroYangle < -180 || gyroYangle > 180)
     gyroYangle = kalAngleY;
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////  
-
-  channel1 = pulseIn(channel1_pin, HIGH, 20000);
-  channel2 = pulseIn(channel2_pin, HIGH, 20000);
-  channel3 = pulseIn(channel3_pin, HIGH, 20000);
-  channel4 = pulseIn(channel4_pin, HIGH, 20000);
-//  channel5 = pulseIn(channel5_pin, HIGH, 20000);
-//  channel6 = pulseIn(channel6_pin, HIGH, 20000);
-  
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////  
-
-////    if(Setpoint[0]-Input[0]>0.5 || Setpoint[0]-Input[0]<-0.5)
-//    {
-//        PitchNN.updateSetpoint(Setpoint[0]);
-//        PitchNN.updatePosition(Input[0]);
-//        PitchNN.calculateOutputOfNeurons();
-//        PitchNN.calculateInputOfNeurons();
-//        PitchNN.updateWeights();
-//    }
-//
-////        if(Setpoint[1]-Input[1]>0.5 || Setpoint[1]-Input[1]<-0.5)
-//    {
-//        RollNN.updateSetpoint(Setpoint[1]);
-//        RollNN.updatePosition(Input[1]);
-//        RollNN.calculateOutputOfNeurons();
-//        RollNN.calculateInputOfNeurons();
-//        RollNN.updateWeights();
-//    }
-//
-////        if(Setpoint[2]-Input[2]>0.5 || Setpoint[2]-Input[2]<-0.5)
-//    {
-//        YawNN.updateSetpoint(Setpoint[2]);
-//        YawNN.updatePosition(Input[2]);
-//        YawNN.calculateOutputOfNeurons();
-//        YawNN.calculateInputOfNeurons();
-//        YawNN.updateWeights();
-//    }
-
-    PitchPID.Compute();
-    RollPID.Compute();
-//    YawPID.Compute();
-
-//  Source: http://www.benripley.com/development/quadcopter-source-code-from-scratch/
-
-  Output[0] = throttle+PIDout[0];//+YawNN.Output();
-  Output[1] = throttle+PIDout[1];//-YawNN.Output();
-  Output[2] = throttle-PIDout[0];//+YawNN.Output();
-  Output[3] = throttle-PIDout[1];//-YawNN.Output();
-  
-  firstESC.writeMicroseconds(Output[0]);
-  secondESC.writeMicroseconds(Output[1]);
-  thirdESC.writeMicroseconds(Output[2]);
-  fourthESC.writeMicroseconds(Output[3]);
-
-    Serial.print(" Roll, ");
-    Serial.print(kalAngleX);
-    Serial.print(" Pitch, ");
-    Serial.print(kalAngleY);
-    Serial.print(" Channel1, ");
-//    Serial.print(unChannel1InShared);
-    Serial.println();
-//    PitchNN.Printx();
-//    PitchNN.Printu();
-//    PitchNN.Printw();  
-
-//delay(250);  
-
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //Kalman Filter Data Update
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -335,6 +256,91 @@ void loop() {
     Serial.println(F("No GPS detected: check wiring."));
     KalmanNoData();
   }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////  
+
+  channel1 = pulseIn(channel1_pin, HIGH, 20000);
+  channel2 = pulseIn(channel2_pin, HIGH, 20000);
+  channel3 = pulseIn(channel3_pin, HIGH, 20000);
+  channel4 = pulseIn(channel4_pin, HIGH, 20000);
+//  channel5 = pulseIn(channel5_pin, HIGH, 20000);
+//  channel6 = pulseIn(channel6_pin, HIGH, 20000);
+  
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////  
+
+  channel1 = map(channel1, 3000, 2200, -50,50);
+  channel2 = map(channel2, 1000, 1900,-150,150);
+  channel3 = map(channel3, 1500, 1900, 1000, 1600);
+//  channel4 = map(channel4,
+
+//    Setpoint[0] = channel1;
+//    Setpoint[1] = channel2;
+//    Setpoint[2] = channel3;
+
+  Setpoint[0] = 0;
+  Setpoint[1] = 0;
+
+//    PitchPID.Compute();
+//    RollPID.Compute();
+//    YawPID.Compute();
+
+////    if(Setpoint[0]-Input[0]>0.5 || Setpoint[0]-Input[0]<-0.5)
+//    {
+        PitchNN.updateSetpoint(Setpoint[0]);
+        PitchNN.updateInput(Input[0]);
+        PitchNN.calculateOutputOfNeurons();
+        PitchNN.calculateInputOfNeurons();
+        PitchNN.updateWeights();
+//    }
+//
+////        if(Setpoint[1]-Input[1]>0.5 || Setpoint[1]-Input[1]<-0.5)
+//    {
+        RollNN.updateSetpoint(Setpoint[1]);
+        RollNN.updateInput(Input[1]);
+        RollNN.calculateOutputOfNeurons();
+        RollNN.calculateInputOfNeurons();
+        RollNN.updateWeights();
+//    }
+//
+////        if(Setpoint[2]-Input[2]>0.5 || Setpoint[2]-Input[2]<-0.5)
+//    {
+//        YawNN.updateSetpoint(Setpoint[2]);
+//        YawNN.updatePosition(Input[2]);
+//        YawNN.calculateOutputOfNeurons();
+//        YawNN.calculateInputOfNeurons();
+//        YawNN.updateWeights();
+//    }
+
+//  Source: http://www.benripley.com/development/quadcopter-source-code-from-scratch/
+
+  throttle = channel3;
+
+  Output[0] = throttle+PitchNN.Output()*30;//+YawNN.Output();
+  Output[1] = throttle+RollNN.Output()*30;//-YawNN.Output();
+  Output[2] = throttle-PitchNN.Output()*30;//+YawNN.Output();
+  Output[3] = throttle-RollNN.Output()*30;//-YawNN.Output();
+  
+  firstESC.writeMicroseconds(Output[0]);
+  secondESC.writeMicroseconds(Output[1]);
+  thirdESC.writeMicroseconds(Output[2]);
+  fourthESC.writeMicroseconds(Output[3]);
+
+    Serial.print(" PID Pitch, ");
+    Serial.print(PitchNN.Output());
+    Serial.print(" PID Roll, ");
+    Serial.print(RollNN.Output());
+    Serial.print("channel3 ");
+    Serial.print(channel3);
+    Serial.print(" Pitch, ");
+    Serial.print(kalAngleY);
+    Serial.print(" Roll ");
+    Serial.print(kalAngleX);
+    Serial.println();
+//    PitchNN.Printx();
+//    PitchNN.Printu();
+    PitchNN.Printw(); 
+    RollNN.Printw(); 
+  
 }
 
 void displaySensorDetails(void)

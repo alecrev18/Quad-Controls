@@ -9,12 +9,12 @@
 class NNPID
 {
 	public:
-		NNPID(float LearnRate);
-		void calculateOutputOfNeurons();
+    NNPID(double _Input, double _Setpoint, float LearnRate);	
+    void calculateOutputOfNeurons();
 		void calculateInputOfNeurons();
 		void updateWeights();
 		void updateSetpoint(float New);
-		void updatePosition(float New);
+		void updateInput(float New);
 		float Output();
 		void Printx();
 		void Printu();
@@ -34,6 +34,8 @@ class NNPID
 		float Setpoint;
 		float Position;
 		float _LearnRate;
+    double _Setpoint;
+    double _Input;
 };
 
 #endif
