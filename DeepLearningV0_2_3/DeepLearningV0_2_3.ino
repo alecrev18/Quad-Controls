@@ -151,7 +151,7 @@ void setup() {
   lsm.getEvent(&accel, &mag, &gyro, &temp); 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////  
   double roll = atan2(accel.acceleration.y,accel.acceleration.z)*Rad_To_Deg;
-  double pitch = atan(-accel.acceleration.x / sqrt(accel.acceleration.y * accel.acceleration.y + accel.acceleration.z * accel.acceleration.y))* Rad_To_Deg;
+  double pitch = atan(-accel.acceleration.x / sqrt(accel.acceleration.y * accel.acceleration.y + accel.acceleration.z * accel.acceleration.z))* Rad_To_Deg;
   
   kalmanX.setAngle(roll); // Set starting angle
   kalmanY.setAngle(pitch);
